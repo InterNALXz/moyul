@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VS Code Clone</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -149,6 +150,32 @@
         .message-sender.system {
             color: #2196F3;
         }
+        .editor-line.current-user {
+            position: relative;
+        }
+        .editor-line.current-user::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #2196F3;
+            border-radius: 2px;
+        }
+        .editor-line.received {
+            position: relative;
+        }
+        .editor-line.received::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #f44336;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -193,37 +220,250 @@
     </div>
 
     <script>
+        // 检查是否已登录
+        const username = localStorage.getItem('username');
+        if (!username) {
+            window.location.href = 'login.html';
+        }
+
         let replacementLines = [];
         let currentLineIndex = 0;
         let isFileLoaded = false;
         let ws = null;
+        let originalTitle = document.title;
+        let unreadCount = 0;
+        let encryptionMethod = 'aes'; // 默认使用AES加密
+
+        // 添加用户名显示
+        const usernameDisplay = document.createElement('div');
+        usernameDisplay.style.position = 'absolute';
+        usernameDisplay.style.top = '10px';
+        usernameDisplay.style.right = '300px';
+        usernameDisplay.style.padding = '5px';
+        usernameDisplay.style.backgroundColor = '#007acc';
+        usernameDisplay.style.color = 'white';
+        usernameDisplay.style.borderRadius = '3px';
+        usernameDisplay.style.cursor = 'pointer';
+        usernameDisplay.title = username; // 使用原生title属性显示用户名
+        usernameDisplay.innerHTML = `<span style="font-size: 16px;">🌐</span>`;
+        document.body.appendChild(usernameDisplay);
+
+        // 添加退出登录按钮
+        const logoutButton = document.createElement('button');
+        logoutButton.textContent = '退出登录';
+        logoutButton.style.position = 'absolute';
+        logoutButton.style.top = '10px';
+        logoutButton.style.right = '400px';
+        logoutButton.style.padding = '5px 10px';
+        logoutButton.style.backgroundColor = '#f44336';
+        logoutButton.style.color = 'white';
+        logoutButton.style.border = 'none';
+        logoutButton.style.borderRadius = '3px';
+        logoutButton.style.cursor = 'pointer';
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('username');
+            window.location.href = 'login.html';
+        });
+        document.body.appendChild(logoutButton);
+
+        // 简单的加密函数
+        function simpleEncrypt(text) {
+            const key = 'moyu-secret-key';
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+                result += String.fromCharCode(charCode);
+            }
+            // 使用 encodeURIComponent 来处理所有字符
+            return encodeURIComponent(result);
+        }
+
+        // 简单的解密函数
+        function simpleDecrypt(encryptedText) {
+            try {
+                const key = 'moyu-secret-key';
+                // 先解码 URI 组件
+                const text = decodeURIComponent(encryptedText);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+                    result += String.fromCharCode(charCode);
+                }
+                return result;
+            } catch (error) {
+                console.error('解密失败:', error);
+                return encryptedText;
+            }
+        }
+
+        // 统一的加密函数
+        function encrypt(text) {
+            return simpleEncrypt(text);
+        }
+
+        // 统一的解密函数
+        function decrypt(text) {
+            return simpleDecrypt(text);
+        }
+
+        // 更新页面标题
+        function updatePageTitle() {
+            if (unreadCount > 0) {
+                document.title = `(${unreadCount}) ${originalTitle}`;
+            } else {
+                document.title = originalTitle;
+            }
+        }
+
+        // 添加状态提示区域
+        const statusArea = document.createElement('div');
+        statusArea.id = 'status-area';
+        statusArea.style.position = 'fixed';
+        statusArea.style.top = '50px';
+        statusArea.style.left = '10px';
+        statusArea.style.padding = '10px';
+        statusArea.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        statusArea.style.color = 'white';
+        statusArea.style.borderRadius = '5px';
+        statusArea.style.zIndex = '1000';
+        document.body.appendChild(statusArea);
+
+        // 添加加密方式指示器
+        const encryptionIndicator = document.createElement('div');
+        encryptionIndicator.style.position = 'absolute';
+        encryptionIndicator.style.top = '10px';
+        encryptionIndicator.style.right = '200px';
+        encryptionIndicator.style.display = 'flex';
+        encryptionIndicator.style.gap = '4px';
+        encryptionIndicator.style.cursor = 'pointer';
+        encryptionIndicator.title = `当前加密: ${encryptionMethod.toUpperCase()}`;
+        document.body.appendChild(encryptionIndicator);
+
+        // 创建两个分页点
+        const dot1 = document.createElement('div');
+        const dot2 = document.createElement('div');
+        [dot1, dot2].forEach(dot => {
+            dot.style.width = '8px';
+            dot.style.height = '8px';
+            dot.style.borderRadius = '50%';
+            dot.style.backgroundColor = '#858585';
+            encryptionIndicator.appendChild(dot);
+        });
+
+        // 更新分页点状态
+        function updateEncryptionDots() {
+            if (encryptionMethod === 'aes') {
+                dot1.style.backgroundColor = '#4CAF50';
+                dot2.style.backgroundColor = '#858585';
+            } else {
+                dot1.style.backgroundColor = '#858585';
+                dot2.style.backgroundColor = '#4CAF50';
+            }
+            encryptionIndicator.title = `当前加密: ${encryptionMethod.toUpperCase()}`;
+        }
+
+        // 初始化分页点状态
+        updateEncryptionDots();
+
+        // 添加点击事件来切换加密方式
+        encryptionIndicator.addEventListener('click', () => {
+            encryptionMethod = encryptionMethod === 'aes' ? 'caesar' : 'aes';
+            updateEncryptionDots();
+        });
+
+        function updateStatus(message, isError = false) {
+            const statusArea = document.getElementById('status-area');
+            if (statusArea) {
+                statusArea.textContent = message;
+                statusArea.style.backgroundColor = isError ? 'rgba(255, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+                // 3秒后自动清除消息
+                setTimeout(() => {
+                    statusArea.textContent = '';
+                }, 3000);
+            }
+        }
+
+        // 修改发送消息函数，使用登录的用户名
+        function sendMessage(message) {
+            if (!message || message.trim() === '') {
+                updateStatus('消息不能为空', true);
+                return;
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try {
+                    console.log('准备发送原始消息:', message);
+                    // 加密消息
+                    const encryptedMessage = encrypt(message);
+                    console.log('加密后的消息:', encryptedMessage);
+                    
+                    const messageData = {
+                        type: 'text',
+                        content: encryptedMessage,
+                        isOriginal: true,
+                        sender: username // 使用登录的用户名
+                    };
+                    console.log('发送到服务器的数据:', messageData);
+                    
+                    ws.send(JSON.stringify(messageData));
+                    console.log('消息已发送到服务器');
+                    updateStatus('消息已发送');
+                } catch (error) {
+                    console.error('发送消息失败:', error);
+                    updateStatus('发送消息失败: ' + error.message, true);
+                }
+            } else {
+                console.error('WebSocket未连接，当前状态:', ws ? ws.readyState : 'ws is null');
+                updateStatus('未连接到服务器，请等待重连', true);
+            }
+        }
 
         // 初始化WebSocket连接
         function initWebSocket() {
+            updateStatus('正在连接服务器...');
             ws = new WebSocket('ws://localhost:3446');
 
             ws.onopen = function() {
                 console.log('WebSocket连接已建立');
+                updateStatus('已连接到服务器');
                 // 添加连接状态指示器
                 const statusIndicator = document.createElement('div');
                 statusIndicator.id = 'ws-status';
                 statusIndicator.style.position = 'absolute';
-                statusIndicator.style.top = '10px';
-                statusIndicator.style.left = '10px';
-                statusIndicator.style.padding = '5px';
+                statusIndicator.style.bottom = '30px';
+                statusIndicator.style.left = '20px';
+                statusIndicator.style.width = '12px';
+                statusIndicator.style.height = '12px';
+                statusIndicator.style.borderRadius = '50%';
                 statusIndicator.style.backgroundColor = '#4CAF50';
-                statusIndicator.style.color = 'white';
-                statusIndicator.style.borderRadius = '3px';
-                statusIndicator.textContent = '已连接';
                 document.body.appendChild(statusIndicator);
             };
 
             ws.onmessage = function(event) {
-                console.log('收到消息:', event.data);
+                console.log('收到原始消息:', event.data);
                 // 处理接收到的消息
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('解析后的消息数据:', data);
+                    
                     if (data.type === 'text') {
+                        // 如果是系统消息，显示状态提示
+                        if (data.sender === 'system') {
+                            updateStatus(data.content);
+                            return;
+                        }
+
+                        // 如果页面不在焦点，增加未读消息计数
+                        if (!document.hasFocus()) {
+                            unreadCount++;
+                            updatePageTitle();
+                        }
+
+                        // 解密消息
+                        console.log('准备解密消息:', data.content);
+                        const decryptedContent = decrypt(data.content);
+                        console.log('解密后的内容:', decryptedContent);
+
                         // 获取当前活动的编辑器（有焦点的编辑器）
                         let activeEditor = document.activeElement;
                         let currentLine = activeEditor.closest('.editor-line');
@@ -239,13 +479,16 @@
                         
                         if (currentLine) {
                             // 保存原始文本
-                            const originalText = data.content;
+                            const originalText = decryptedContent;
                             
                             // 获取替换文本
                             const replacementText = isFileLoaded ? replacementLines[currentLineIndex] : originalText;
                             
                             // 替换文本，但保留原始文本的显示，并添加发送者信息
-                            activeEditor.innerHTML = `<div class="message-container"><span>${replacementText}</span><div class="message-original"><span class="message-sender ${data.sender === 'system' ? 'system' : ''}">${data.sender}</span>${originalText}</div></div>`;
+                            activeEditor.innerHTML = `<div class="message-container"><span>${replacementText}</span><div class="message-original"><span class="message-sender">${data.sender || 'unknown'}</span>${originalText}</div></div>`;
+                            
+                            // 添加接收者标记（红色）
+                            currentLine.classList.add('received');
                             
                             // 更新行索引
                             if (isFileLoaded) {
@@ -271,14 +514,15 @@
                     }
                 } catch (error) {
                     console.error('处理消息时出错:', error);
+                    updateStatus('处理消息时出错: ' + error.message, true);
                 }
             };
 
             ws.onclose = function() {
                 console.log('WebSocket连接已关闭');
+                updateStatus('连接已断开，正在尝试重新连接...', true);
                 const statusIndicator = document.getElementById('ws-status');
                 if (statusIndicator) {
-                    statusIndicator.textContent = '已断开';
                     statusIndicator.style.backgroundColor = '#f44336';
                 }
                 // 尝试重新连接
@@ -287,21 +531,15 @@
 
             ws.onerror = function(error) {
                 console.error('WebSocket错误:', error);
+                updateStatus('连接错误: ' + error.message, true);
             };
         }
 
-        // 发送消息到服务器
-        function sendMessage(message) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'text',
-                    content: message,
-                    isOriginal: true
-                }));
-            } else {
-                console.error('WebSocket未连接');
-            }
-        }
+        // 添加页面焦点事件监听
+        window.addEventListener('focus', function() {
+            unreadCount = 0;
+            updatePageTitle();
+        });
 
         // 初始化WebSocket连接
         initWebSocket();
@@ -362,8 +600,11 @@
                     // 获取替换文本
                     const replacementText = isFileLoaded ? replacementLines[currentLineIndex] : originalText;
                     
-                    // 替换文本，但保留原始文本的显示
-                    editorElement.innerHTML = `<span title="${originalText}">${replacementText}</span>`;
+                    // 替换文本，但保留原始文本的显示，并添加发送者信息
+                    editorElement.innerHTML = `<div class="message-container"><span>${replacementText}</span><div class="message-original"><span class="message-sender">me</span>${originalText}</div></div>`;
+                    
+                    // 添加当前用户标记
+                    editorElement.closest('.editor-line').classList.add('current-user');
                     
                     // 更新行索引
                     if (isFileLoaded) {
