@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 48px;
+            background-color: #333333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 10px;
+        }
+
+        .sidebar-icon {
+            width: 24px;
+            height: 24px;
+            margin: 8px 0;
+            color: #858585;
+            cursor: pointer;
+        }
+
+        .sidebar-icon:hover {
+            color: #ffffff;
+        }
+
+        .explorer {
+            width: 300px;
+            background-color: #252526;
+            border-right: 1px solid #1e1e1e;
+            padding: 10px;
+        }
+
+        .explorer-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #858585;
+            margin-bottom: 10px;
+        }
+
+        .explorer-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .explorer-item:hover {
+            background-color: #2a2d2e;
+        }
+
+        .explorer-item i {
+            margin-right: 8px;
+            color: #858585;
+        }
+
+        .editor {
+            flex: 1;
+            background-color: #1e1e1e;
+            padding: 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .editor-line {
+            display: flex;
+            min-height: 20px;
+        }
+
+        .line-number {
+            color: #858585;
+            padding-right: 10px;
+            user-select: none;
+            text-align: right;
+            width: 40px;
+        }
+
+        .editor-content {
+            flex: 1;
+            outline: none;
+            white-space: pre;
+            tab-size: 4;
+        }
+
+        .status-bar {
+            height: 22px;
+            background-color: #007acc;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+        }
+
+        .status-bar-item {
+            margin-right: 20px;
+            color: #ffffff;
+        }
+
+        .message-container {
+            position: relative;
+            display: inline-block;
+        }
+        .message-original {
+            display: none;
+            position: absolute;
+            background-color: #2d2d2d;
+            color: #888;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            z-index: 1000;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            margin-top: 5px;
+        }
+        .message-container:hover .message-original {
+            display: block;
+        }
+        .message-sender {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .message-sender.system {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-icon">📁</div>
+            <div class="sidebar-icon">🔍</div>
+            <div class="sidebar-icon">📝</div>
+            <div class="sidebar-icon">⚙️</div>
+        </div>
+        <div class="explorer">
+            <div class="explorer-header">Explorer</div>
+            <div class="explorer-item">
+                <i>📁</i>
+                <span>src</span>
+            </div>
+            <div class="explorer-item">
+                <i>📄</i>
+                <span>index.html</span>
+            </div>
+            <div class="explorer-item">
+                <i>📄</i>
+                <span>style.css</span>
+            </div>
+            <div class="explorer-item">
+                <i>📄</i>
+                <span>script.js</span>
+            </div>
+        </div>
+        <div class="editor" id="editor">
+            <div class="editor-line">
+                <span class="line-number">1</span>
+                <div class="editor-content" contenteditable="true" spellcheck="false"></div>
+            </div>
+        </div>
+    </div>
+    <div class="status-bar">
+        <div class="status-bar-item">main</div>
+        <div class="status-bar-item">UTF-8</div>
+        <div class="status-bar-item">JavaScript</div>
+        <div class="status-bar-item">Ln 1, Col 1</div>
+    </div>
+
+    <script>
+        let replacementLines = [];
+        let currentLineIndex = 0;
+        let isFileLoaded = false;
+        let ws = null;
+
+        // 初始化WebSocket连接
+        function initWebSocket() {
+            ws = new WebSocket('ws://localhost:3446');
+
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                // 添加连接状态指示器
+                const statusIndicator = document.createElement('div');
+                statusIndicator.id = 'ws-status';
+                statusIndicator.style.position = 'absolute';
+                statusIndicator.style.top = '10px';
+                statusIndicator.style.left = '10px';
+                statusIndicator.style.padding = '5px';
+                statusIndicator.style.backgroundColor = '#4CAF50';
+                statusIndicator.style.color = 'white';
+                statusIndicator.style.borderRadius = '3px';
+                statusIndicator.textContent = '已连接';
+                document.body.appendChild(statusIndicator);
+            };
+
+            ws.onmessage = function(event) {
+                console.log('收到消息:', event.data);
+                // 处理接收到的消息
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'text') {
+                        // 获取当前活动的编辑器（有焦点的编辑器）
+                        let activeEditor = document.activeElement;
+                        let currentLine = activeEditor.closest('.editor-line');
+                        
+                        // 如果没有找到当前活动的编辑器，使用最后一个编辑器
+                        if (!currentLine) {
+                            const editorLines = document.querySelectorAll('.editor-line');
+                            if (editorLines.length > 0) {
+                                currentLine = editorLines[editorLines.length - 1];
+                                activeEditor = currentLine.querySelector('.editor-content');
+                            }
+                        }
+                        
+                        if (currentLine) {
+                            // 保存原始文本
+                            const originalText = data.content;
+                            
+                            // 获取替换文本
+                            const replacementText = isFileLoaded ? replacementLines[currentLineIndex] : originalText;
+                            
+                            // 替换文本，但保留原始文本的显示，并添加发送者信息
+                            activeEditor.innerHTML = `<div class="message-container"><span>${replacementText}</span><div class="message-original"><span class="message-sender ${data.sender === 'system' ? 'system' : ''}">${data.sender}</span>${originalText}</div></div>`;
+                            
+                            // 更新行索引
+                            if (isFileLoaded) {
+                                currentLineIndex = (currentLineIndex + 1) % replacementLines.length;
+                            }
+                            
+                            // 创建新行
+                            const newLine = document.createElement('div');
+                            newLine.className = 'editor-line';
+                            newLine.innerHTML = `
+                                <span class="line-number">${document.querySelectorAll('.editor-line').length + 1}</span>
+                                <div class="editor-content" contenteditable="true" spellcheck="false"></div>
+                            `;
+                            currentLine.parentNode.appendChild(newLine);
+                            
+                            // 将焦点移到新行
+                            const newEditor = newLine.querySelector('.editor-content');
+                            newEditor.focus();
+                            
+                            // 为新行添加事件监听器
+                            addEditorListeners(newEditor);
+                        }
+                    }
+                } catch (error) {
+                    console.error('处理消息时出错:', error);
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭');
+                const statusIndicator = document.getElementById('ws-status');
+                if (statusIndicator) {
+                    statusIndicator.textContent = '已断开';
+                    statusIndicator.style.backgroundColor = '#f44336';
+                }
+                // 尝试重新连接
+                setTimeout(initWebSocket, 3000);
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+            };
+        }
+
+        // 发送消息到服务器
+        function sendMessage(message) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'text',
+                    content: message,
+                    isOriginal: true
+                }));
+            } else {
+                console.error('WebSocket未连接');
+            }
+        }
+
+        // 初始化WebSocket连接
+        initWebSocket();
+
+        // 添加文件选择按钮
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.txt';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+
+        // 添加加载按钮
+        const loadButton = document.createElement('button');
+        loadButton.textContent = '加载替换文本文件';
+        loadButton.style.position = 'absolute';
+        loadButton.style.top = '10px';
+        loadButton.style.right = '10px';
+        loadButton.style.zIndex = '1000';
+        document.body.appendChild(loadButton);
+
+        // 处理文件加载
+        loadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    console.log('成功读取文件内容');
+                    replacementLines = event.target.result.split('\n').filter(line => line.trim());
+                    console.log('处理后的替换文本行:', replacementLines);
+                    isFileLoaded = true;
+                    loadButton.textContent = '文件已加载';
+                    loadButton.style.backgroundColor = '#4CAF50';
+                };
+                reader.onerror = (error) => {
+                    console.error('读取文件时发生错误:', error);
+                    loadButton.textContent = '加载失败';
+                    loadButton.style.backgroundColor = '#f44336';
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function addEditorListeners(editorElement) {
+            editorElement.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    
+                    // 保存原始文本
+                    const originalText = editorElement.textContent;
+                    
+                    // 发送原始文本到服务器
+                    sendMessage(originalText);
+                    
+                    // 获取替换文本
+                    const replacementText = isFileLoaded ? replacementLines[currentLineIndex] : originalText;
+                    
+                    // 替换文本，但保留原始文本的显示
+                    editorElement.innerHTML = `<span title="${originalText}">${replacementText}</span>`;
+                    
+                    // 更新行索引
+                    if (isFileLoaded) {
+                        currentLineIndex = (currentLineIndex + 1) % replacementLines.length;
+                    }
+                    
+                    // 创建新行
+                    const newLine = document.createElement('div');
+                    newLine.className = 'editor-line';
+                    newLine.innerHTML = `
+                        <span class="line-number">${document.querySelectorAll('.editor-line').length + 1}</span>
+                        <div class="editor-content" contenteditable="true" spellcheck="false"></div>
+                    `;
+                    editorElement.parentNode.parentNode.appendChild(newLine);
+                    
+                    // 将焦点移到新行
+                    const newEditor = newLine.querySelector('.editor-content');
+                    newEditor.focus();
+                    
+                    // 为新行添加事件监听器
+                    addEditorListeners(newEditor);
+                }
+            });
+        }
+
+        // 为初始编辑器添加事件监听器
+        const editor = document.querySelector('.editor-content');
+        addEditorListeners(editor);
+        editor.focus();
+    </script>
+</body>
+</html>
