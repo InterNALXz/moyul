@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WPS Word 会话文件视图</title>
+  <link rel="stylesheet" href="./styles.css?v=20260325-wps-theme-v7" />
+</head>
+<body class="theme-wps-word">
+  <div class="vscode-shell wps-word-shell">
+    <section class="wps-doc-strip" aria-label="会话文档栏">
+      <div class="wps-doc-strip-head">
+        <span class="wps-doc-logo" aria-hidden="true">W</span>
+        <ul id="sessionList" class="session-list wps-session-list"></ul>
+        <button id="newSessionBtn" class="wps-add-session-btn" type="button" title="添加会话">+</button>
+      </div>
+      <div id="panelPeerField" class="panel-peer-field wps-top-peer-field" hidden>
+        <label class="panel-peer-input-row">
+          <span>对端地址或用户名</span>
+          <input id="remotePeerInput" type="text" placeholder="@alice 或 127.0.0.1:5501" />
+        </label>
+        <div class="panel-peer-actions">
+          <button id="connectBtn" class="toolbar-btn primary" type="button">发起建联</button>
+          <button id="selfConnectBtn" class="toolbar-btn" type="button">本页自连</button>
+        </div>
+        <div class="panel-peer-actions">
+          <input id="debugPortInput" class="debug-port-input panel-debug-input" type="number" min="1" max="65535" placeholder="端口" />
+          <button id="selfConnectPortBtn" class="toolbar-btn" type="button">端口快连</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="wps-ribbon" aria-label="WPS 功能区">
+      <div class="wps-ribbon-tabs">
+        <div class="wps-ribbon-left">
+          <button id="wpsFileMenuBtn" type="button" class="wps-file-btn">
+            <span class="wps-file-icon" aria-hidden="true">
+              <i></i><i></i><i></i>
+            </span>
+            <span>文件</span>
+          </button>
+          <span class="wps-file-divider" aria-hidden="true"></span>
+          <label class="wps-auto-save">
+            <input id="wpsAutoSaveToggle" type="checkbox" checked />
+            <span>自动保存</span>
+          </label>
+          <div id="wpsFileMenu" class="wps-file-menu hidden">
+            <button id="wpsFileNewBtn" type="button" class="wps-file-item">新建</button>
+            <button id="pickDirBtn" type="button" class="wps-file-item">打开</button>
+            <button id="wpsFileSaveBtn" type="button" class="wps-file-item">保存</button>
+            <div class="wps-file-option-wrap">
+              <button id="configBtn" type="button" class="wps-file-item">选项 ▸</button>
+                <div id="settingsMenu" class="settings-menu hidden" role="menu" aria-label="设置菜单">
+                  <button id="settingsDefaultFolderBtn" class="settings-menu-item" type="button">默认文件夹</button>
+                  <button id="settingsReplaceLimitBtn" class="settings-menu-item" type="button">TXT 替换行宽</button>
+                  <button id="settingsRelayBtn" class="settings-menu-item" type="button">Relay 服务器</button>
+                  <button id="settingsExtensionsBtn" class="settings-menu-item" type="button">扩展</button>
+                </div>
+            </div>
+          </div>
+        </div>
+        <div class="wps-ribbon-center">
+          <button type="button" class="wps-ribbon-tab active">开始</button>
+          <button type="button" class="wps-ribbon-tab">插入</button>
+          <button type="button" class="wps-ribbon-tab">页面布局</button>
+          <button type="button" class="wps-ribbon-tab">引用</button>
+          <button type="button" class="wps-ribbon-tab">审阅</button>
+          <div class="wps-view-switch-wrap">
+            <button id="wpsWordThemeBtn" type="button" class="wps-ribbon-tab">视图</button>
+            <div id="wpsThemeSwitchMenu" class="wps-theme-switch-menu hidden" role="menu" aria-label="视图菜单">
+              <button id="wpsThemeSwitchBtn" class="wps-theme-switch-btn" type="button">切换到 VSCode 样式</button>
+            </div>
+          </div>
+        </div>
+        <div class="wps-ribbon-right">
+          <button id="clearBtn" class="toolbar-btn danger wps-clear-btn" type="button">清空显示</button>
+        </div>
+      </div>
+            <div class="wps-ribbon-groups">
+        <div class="wps-ribbon-group wps-group-clipboard">
+          <div class="wps-clipboard-wrap">
+            <button type="button" class="wps-paste-btn">
+              <span class="wps-paste-icon" aria-hidden="true"></span>
+              <span class="wps-paste-label">粘贴</span>
+              <span class="wps-paste-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="wps-clipboard-side">
+              <button type="button" class="wps-tool-btn small">格式刷</button>
+              <button type="button" class="wps-tool-btn small">剪切</button>
+              <button type="button" class="wps-tool-btn small">复制</button>
+              <button type="button" class="wps-tool-btn small">粘贴</button>
+            </div>
+          </div>
+          <div class="wps-group-title">剪贴板</div>
+        </div>
+
+        <div class="wps-ribbon-group wps-group-font">
+          <div class="wps-font-row top">
+            <button type="button" class="wps-select-btn">宋体(正文)</button>
+            <button type="button" class="wps-select-btn narrow">五号</button>
+            <button type="button" class="wps-icon-btn">A+</button>
+            <button type="button" class="wps-icon-btn">A-</button>
+            <button type="button" class="wps-icon-btn">Aa</button>
+          </div>
+          <div class="wps-font-row bottom">
+            <button type="button" class="wps-icon-btn">B</button>
+            <button type="button" class="wps-icon-btn">I</button>
+            <button type="button" class="wps-icon-btn">U</button>
+            <button type="button" class="wps-icon-btn">S</button>
+            <button type="button" class="wps-icon-btn">A</button>
+            <button type="button" class="wps-icon-btn">✎</button>
+            <button type="button" class="wps-icon-btn">▁</button>
+          </div>
+          <div class="wps-group-title">字体</div>
+        </div>
+
+        <div class="wps-ribbon-group wps-group-paragraph">
+          <div class="wps-para-row">
+            <button type="button" class="wps-icon-btn">•</button>
+            <button type="button" class="wps-icon-btn">1.</button>
+            <button type="button" class="wps-icon-btn">≡</button>
+            <button type="button" class="wps-icon-btn">↔</button>
+            <button type="button" class="wps-icon-btn">¶</button>
+          </div>
+          <div class="wps-para-row">
+            <button type="button" class="wps-icon-btn">⬅</button>
+            <button type="button" class="wps-icon-btn">≣</button>
+            <button type="button" class="wps-icon-btn">➡</button>
+            <button type="button" class="wps-icon-btn">☰</button>
+            <button type="button" class="wps-icon-btn">↕</button>
+          </div>
+          <div class="wps-group-title">段落</div>
+        </div>
+
+        <div class="wps-ribbon-group wps-group-style">
+          <div class="wps-style-strip">
+            <button type="button" class="wps-style-item active">正文</button>
+            <button type="button" class="wps-style-item">标题 1</button>
+            <button type="button" class="wps-style-item">标题 2</button>
+            <button type="button" class="wps-style-item">标题 3</button>
+            <button type="button" class="wps-style-item">标题 4</button>
+          </div>
+          <div class="wps-group-title">样式</div>
+        </div>
+
+        <div class="wps-ribbon-group wps-group-edit">
+          <div class="wps-edit-wrap">
+            <button type="button" class="wps-tool-btn">查找替换</button>
+            <button type="button" class="wps-tool-btn">翻译</button>
+            <button type="button" class="wps-tool-btn">AI 排版</button>
+            <button type="button" class="wps-tool-btn">智能公文</button>
+          </div>
+          <div class="wps-group-title">编辑</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="workspace wps-main-workspace">
+      <aside class="wps-outline-pane" aria-label="大纲导航">
+        <div class="wps-outline-head">导航</div>
+        <div class="wps-outline-tabs">
+          <button type="button" class="wps-outline-tab active">目录</button>
+          <button type="button" class="wps-outline-tab">章节</button>
+          <button type="button" class="wps-outline-tab">书签</button>
+        </div>
+        <div class="wps-outline-empty">暂无目录</div>
+      </aside>
+
+      <main class="middle-pane">
+        <div class="pane-head">
+          <div id="currentSessionText" class="pane-title">未选择会话</div>
+          <div class="pane-actions hidden-file-controls" aria-hidden="true">
+            <select id="fileSelect"></select>
+            <input id="targetFileInput" type="text" value="conversation.log" />
+          </div>
+        </div>
+
+        <section class="file-editor">
+          <div class="file-editor-head">
+            <span id="currentFileLabel">conversation.log</span>
+            <span class="file-editor-hint">在下方 NEW 行输入并回车发送；默认显示替换内容，悬浮看原文</span>
+          </div>
+          <ul id="fileLineList" class="file-line-list"></ul>
+        </section>
+      </main>
+
+      <aside class="right-pane">
+        <div class="panel-title">批注（当前会话状态）</div>
+        <section class="status-card">
+          <div id="connectionText" class="connection-text">连接状态：未连接</div>
+          <div id="relayText" class="relay-text">Relay 状态：初始化中</div>
+          <div id="activeSessionInfo" class="active-session-info">当前会话：无</div>
+          <div class="compose-actions wrap">
+            <button id="disconnectBtn" class="toolbar-btn danger" type="button" disabled>断开连接</button>
+          </div>
+        </section>
+
+        <section class="status-card">
+          <div class="replacement-head">
+            <div class="replacement-title">替换状态</div>
+            <button id="reloadReplaceBtn" class="toolbar-btn" type="button">选择文件读取</button>
+          </div>
+          <div id="replacementFileNameText" class="replacement-line">文件名：-</div>
+          <div id="replacementSourceText" class="replacement-line">读取来源：-</div>
+          <div id="replacementHitText" class="replacement-line">命中行数：0/0</div>
+          <div id="replacementCurrentLineText" class="replacement-line">当前读取行：-</div>
+        </section>
+      </aside>
+
+      <aside class="wps-right-sidebar" aria-label="WPS 快捷侧栏">
+        <button id="wpsContextToggleBtn" type="button" class="wps-context-scroll-btn" title="上下文滑动">
+          <svg viewBox="0 0 12 30" aria-hidden="true">
+            <path d="M6 4v22" />
+            <path d="M3.6 7.2L6 4.8l2.4 2.4" />
+            <path d="M3.6 22.8L6 25.2l2.4-2.4" />
+          </svg>
+        </button>
+        <button type="button" class="wps-side-btn" title="配置">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 12h12" />
+          </svg>
+        </button>
+        <button id="wpsCommentBtn" type="button" class="wps-side-btn" title="批注">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 6.5h14v8H10l-4 4z" />
+            <path d="M8 9.5h8" />
+            <path d="M8 12.5h6" />
+          </svg>
+        </button>
+        <button type="button" class="wps-side-btn" title="目录">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 6.5h10" />
+            <path d="M7 10.5h10" />
+            <path d="M7 14.5h10" />
+            <path d="M7 18.5h10" />
+            <circle cx="4.5" cy="6.5" r="0.9" />
+            <circle cx="4.5" cy="10.5" r="0.9" />
+            <circle cx="4.5" cy="14.5" r="0.9" />
+            <circle cx="4.5" cy="18.5" r="0.9" />
+          </svg>
+        </button>
+        <button type="button" class="wps-side-btn" title="云文档">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 17.5h10a3 3 0 0 0 .5-6A4.5 4.5 0 0 0 8.8 9.3 3.3 3.3 0 0 0 7 17.5z" />
+            <path d="M12 11.5v6" />
+            <path d="M9.8 15.3L12 17.5l2.2-2.2" />
+          </svg>
+        </button>
+        <button id="helpMenuBtn" type="button" class="wps-side-btn wps-side-help-btn" title="帮助">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.2" />
+            <path d="M9.8 9.4a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1.2.9-1.2 1.8" />
+            <circle cx="12" cy="16.6" r="0.8" />
+          </svg>
+        </button>
+        <button type="button" class="wps-side-btn wps-side-more-btn" title="鏇村">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="7.5" cy="12" r="1.2" />
+            <circle cx="12" cy="12" r="1.2" />
+            <circle cx="16.5" cy="12" r="1.2" />
+          </svg>
+        </button>
+      </aside>
+    </div>
+
+    <div id="previewCard" class="preview-card hidden" role="status" aria-live="polite">
+      <div class="preview-head">
+        <span id="previewName">line-preview</span>
+        <span id="previewDirTag" class="preview-dir-tag hidden"></span>
+        <span class="preview-hint">悬浮时还原原始内容</span>
+      </div>
+      <pre id="previewContent"></pre>
+    </div>
+
+    <footer class="status-bar">
+      <span id="statusText">等待通信初始化...</span>
+      <span id="countText">会话数：0</span>
+    </footer>
+  </div>
+
+  <div id="requestModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="requestTitle">
+    <div class="modal-card">
+      <h3 id="requestTitle">收到建联请求</h3>
+      <p>来自对端地址：<span id="requestFrom"></span></p>
+      <p>对端端口：<span id="requestFromPort">未指定</span></p>
+      <p>会话 ID：<span id="requestSession"></span></p>
+      <div class="modal-actions">
+        <button id="rejectBtn" class="toolbar-btn danger" type="button">拒绝</button>
+        <button id="acceptBtn" class="toolbar-btn primary" type="button">接受</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="configModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="configTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="configTitle">配置</h3>
+      <p id="defaultFolderNameText">默认文件夹：未设置</p>
+      <p id="defaultFolderStatsText">可用文件：0</p>
+      <p class="config-hint">会话可自动分配默认文件夹中的替换文件，手动选择文件优先级更高。</p>
+      <label class="compose-field">
+        <span>TXT 每行最大字符数</span>
+        <input id="replacementLineLimitInput" type="number" min="1" max="2000" step="1" value="80" />
+      </label>
+      <p id="replacementLineLimitHint" class="config-hint">TXT 超长内容不会丢弃，会在下一行继续替换。</p>
+      <div class="modal-actions config-actions">
+        <button id="chooseDefaultFolderBtn" class="toolbar-btn primary" type="button">选择默认文件夹</button>
+        <button id="clearDefaultFolderBtn" class="toolbar-btn danger" type="button">清除默认文件夹</button>
+        <button id="saveReplacementLineLimitBtn" class="toolbar-btn" type="button">保存替换行宽</button>
+        <button id="closeConfigBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="extensionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="extensionTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="extensionTitle">扩展</h3>
+      <p>扩展功能入口预留中。</p>
+      <div class="modal-actions config-actions">
+        <button id="closeExtensionBtn" class="toolbar-btn primary" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="relayModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="relayTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="relayTitle">Relay 服务器</h3>
+      <p class="config-hint">填写 Relay 地址（例如 <code>http://127.0.0.1:9000</code>），保存后会立即重连。</p>
+      <label class="compose-field">
+        <span>Relay 地址</span>
+        <input id="relayUrlInput" type="text" placeholder="http://127.0.0.1:9000" />
+      </label>
+      <label class="compose-field">
+        <span>用户名</span>
+        <input id="relayUsernameInput" type="text" placeholder="user_001 / 张三" />
+      </label>
+      <div class="modal-actions config-actions">
+        <button id="saveRelayBtn" class="toolbar-btn primary" type="button">保存并重连</button>
+        <button id="resetRelayBtn" class="toolbar-btn danger" type="button">恢复默认</button>
+        <button id="closeRelayBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="helpTitle">帮助</h3>
+      <p id="helpUsernameText">用户名：-</p>
+      <p id="helpPeerIdText">ID：-</p>
+      <p id="helpEndpointText">端点：-</p>
+      <div class="modal-actions config-actions">
+        <button id="copyIdentityBtn" class="toolbar-btn primary" type="button">复制身份信息</button>
+        <button id="closeHelpBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js?v=20260325-wps-page-v11"></script>
+</body>
+</html>
+

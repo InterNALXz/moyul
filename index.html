@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VSCode 会话文件视图</title>
+  <link rel="stylesheet" href="./styles.css?v=20260325-wps-theme-v2" />
+</head>
+<body>
+  <div class="vscode-shell">
+    <header class="title-bar">
+      <div class="title-left">
+        <span class="app-logo" aria-hidden="true">✦</span>
+        <nav class="menu-bar" aria-label="菜单栏">
+          <button type="button" class="menu-item">文件</button>
+          <button type="button" class="menu-item">编辑</button>
+          <button type="button" class="menu-item">选择</button>
+          <button type="button" class="menu-item">查看</button>
+          <button type="button" class="menu-item">转到</button>
+          <button type="button" class="menu-item">运行</button>
+          <button type="button" class="menu-item">终端</button>
+          <button id="helpMenuBtn" type="button" class="menu-item">帮助</button>
+        </nav>
+      </div>
+      <div class="title-center">
+        <span class="app-name">Visual Studio Code - Session Relay Workspace</span>
+      </div>
+      <div class="toolbar title-toolbar">
+        <span id="localPeerText" class="peer-tag"></span>
+        <button id="pickDirBtn" class="toolbar-btn" type="button">打开对端页面</button>
+        <button id="clearBtn" class="toolbar-btn danger" type="button">清空显示</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="activity-bar" aria-label="主活动栏">
+        <button id="activityExplorerBtn" class="activity-btn active" type="button" data-activity="explorer" title="文件">
+          <svg class="activity-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5.5h7l1.5 2H20v11H4z" />
+            <path d="M4 9.5h16" />
+            <path d="M8 13h8" />
+          </svg>
+        </button>
+        <button id="activitySearchBtn" class="activity-btn" type="button" data-activity="search" title="搜索">
+          <svg class="activity-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="5.5" />
+            <path d="M15.2 15.2L20 20" />
+          </svg>
+        </button>
+        <button id="activityGitBtn" class="activity-btn" type="button" data-activity="git" title="源代码管理">
+          <svg class="activity-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="7" cy="6" r="2" />
+            <circle cx="7" cy="18" r="2" />
+            <circle cx="17" cy="12" r="2" />
+            <path d="M9 7.4l6 3.2" />
+            <path d="M9 16.6l6-3.2" />
+          </svg>
+        </button>
+        <button id="activityRunBtn" class="activity-btn" type="button" data-activity="run" title="运行与调试">
+          <span class="activity-icon">▶</span>
+        </button>
+        <button id="activityExtBtn" class="activity-btn" type="button" data-activity="extensions" title="扩展">
+          <svg class="activity-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 4h8v6.2a2.2 2.2 0 1 0 0 4.4V20H8v-5.4a2.2 2.2 0 1 1 0-4.4z" />
+            <path d="M8 4v2.6a2.2 2.2 0 1 1-4.4 0V4z" />
+          </svg>
+        </button>
+        <button id="configBtn" class="activity-btn activity-btn-bottom" type="button" title="配置">
+          <svg class="activity-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M12 3.5v2.1" />
+            <path d="M12 18.4v2.1" />
+            <path d="M3.5 12h2.1" />
+            <path d="M18.4 12h2.1" />
+            <path d="M5.9 5.9l1.5 1.5" />
+            <path d="M16.6 16.6l1.5 1.5" />
+            <path d="M18.1 5.9l-1.5 1.5" />
+            <path d="M7.4 16.6l-1.5 1.5" />
+          </svg>
+        </button>
+      </aside>
+
+      <aside class="left-pane">
+        <section class="activity-panel" data-activity-panel="explorer">
+          <div class="panel-header">
+            <div class="panel-title">资源管理器</div>
+            <div class="panel-actions">
+              <button id="newSessionBtn" class="icon-btn" type="button" title="新建会话">+</button>
+              <div id="panelPeerField" class="panel-peer-field" hidden>
+                <label class="panel-peer-input-row">
+                  <span>对端地址或用户名</span>
+                  <input id="remotePeerInput" type="text" placeholder="@alice 或 127.0.0.1:5501" />
+                </label>
+                <div class="panel-peer-actions">
+                  <button id="connectBtn" class="toolbar-btn primary" type="button">发起建联</button>
+                  <button id="selfConnectBtn" class="toolbar-btn" type="button">本页自连</button>
+                </div>
+                <div class="panel-peer-actions">
+                  <input id="debugPortInput" class="debug-port-input panel-debug-input" type="number" min="1" max="65535" placeholder="端口" />
+                  <button id="selfConnectPortBtn" class="toolbar-btn" type="button">端口快连</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="section-title">不同会话（文件格式）</div>
+          <ul id="sessionList" class="session-list"></ul>
+        </section>
+
+        <section class="activity-panel hidden-panel" data-activity-panel="search">
+          <div class="panel-title">搜索</div>
+          <div class="panel-placeholder">按 <code>Ctrl+F</code> 在当前会话中查找。</div>
+        </section>
+
+        <section class="activity-panel hidden-panel" data-activity-panel="git">
+          <div class="panel-title">源代码管理</div>
+          <div class="panel-placeholder">这里用于展示会话变更摘要。</div>
+        </section>
+
+        <section class="activity-panel hidden-panel" data-activity-panel="run">
+          <div class="panel-title">运行与调试</div>
+          <div class="panel-placeholder">可在资源管理器右上角“+”展开建联控制区。</div>
+        </section>
+
+        <section class="activity-panel hidden-panel" data-activity-panel="extensions">
+          <div class="panel-title">扩展</div>
+          <div class="panel-placeholder">点击下面按钮可切换到 WPS Word 风格。</div>
+          <div class="extension-theme-card">
+            <button id="wpsWordThemeBtn" class="wps-word-btn" type="button" aria-pressed="false">
+              <span class="wps-word-logo" aria-hidden="true">W</span>
+              <span class="wps-word-btn-text">Switch to WPS Word Style</span>
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <main class="middle-pane">
+        <div class="pane-head">
+          <div id="currentSessionText" class="pane-title">未选择会话</div>
+          <div class="pane-actions hidden-file-controls" aria-hidden="true">
+            <select id="fileSelect"></select>
+            <input id="targetFileInput" type="text" value="conversation.log" />
+          </div>
+        </div>
+
+        <section class="file-editor">
+          <div class="file-editor-head">
+            <span id="currentFileLabel">conversation.log</span>
+            <span class="file-editor-hint">在下方 NEW 行输入并回车发送；默认显示替换内容，悬浮看原文</span>
+          </div>
+          <ul id="fileLineList" class="file-line-list"></ul>
+        </section>
+      </main>
+
+      <aside class="right-pane">
+        <div class="panel-title">当前会话建联状态</div>
+        <section class="status-card">
+          <div id="connectionText" class="connection-text">连接状态：未连接</div>
+          <div id="relayText" class="relay-text">Relay 状态：初始化中</div>
+          <div id="activeSessionInfo" class="active-session-info">当前会话：无</div>
+          <div class="compose-actions wrap">
+            <button id="disconnectBtn" class="toolbar-btn danger" type="button" disabled>断开连接</button>
+          </div>
+        </section>
+
+        <section class="status-card">
+          <div class="replacement-head">
+            <div class="replacement-title">替换状态</div>
+            <button id="reloadReplaceBtn" class="toolbar-btn" type="button">选择文件读取</button>
+          </div>
+          <div id="replacementFileNameText" class="replacement-line">文件名：-</div>
+          <div id="replacementSourceText" class="replacement-line">读取来源：-</div>
+          <div id="replacementHitText" class="replacement-line">命中行数：0/0</div>
+          <div id="replacementCurrentLineText" class="replacement-line">当前读取行：-</div>
+        </section>
+      </aside>
+    </div>
+
+    <div id="previewCard" class="preview-card hidden" role="status" aria-live="polite">
+      <div class="preview-head">
+        <span id="previewName">line-preview</span>
+        <span id="previewDirTag" class="preview-dir-tag hidden"></span>
+        <span class="preview-hint">悬浮时还原原始内容</span>
+      </div>
+      <pre id="previewContent"></pre>
+    </div>
+
+    <footer class="status-bar">
+      <span id="statusText">等待通信初始化...</span>
+      <span id="countText">会话数：0</span>
+    </footer>
+  </div>
+
+  <div id="settingsMenu" class="settings-menu hidden" role="menu" aria-label="设置菜单">
+    <button id="settingsDefaultFolderBtn" class="settings-menu-item" type="button">默认文件夹</button>
+    <button id="settingsReplaceLimitBtn" class="settings-menu-item" type="button">TXT 替换行宽</button>
+    <button id="settingsRelayBtn" class="settings-menu-item" type="button">Relay 服务器</button>
+    <button id="settingsExtensionsBtn" class="settings-menu-item" type="button">扩展</button>
+  </div>
+
+  <div id="requestModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="requestTitle">
+    <div class="modal-card">
+      <h3 id="requestTitle">收到建联请求</h3>
+      <p>来自对端地址：<span id="requestFrom"></span></p>
+      <p>对端端口：<span id="requestFromPort">未指定</span></p>
+      <p>会话 ID：<span id="requestSession"></span></p>
+      <div class="modal-actions">
+        <button id="rejectBtn" class="toolbar-btn danger" type="button">拒绝</button>
+        <button id="acceptBtn" class="toolbar-btn primary" type="button">接受</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="configModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="configTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="configTitle">配置</h3>
+      <p id="defaultFolderNameText">默认文件夹：未设置</p>
+      <p id="defaultFolderStatsText">可用文件：0</p>
+      <p class="config-hint">会话可自动分配默认文件夹中的替换文件，手动选择文件优先级更高。</p>
+      <label class="compose-field">
+        <span>TXT 每行最大字符数</span>
+        <input id="replacementLineLimitInput" type="number" min="1" max="2000" step="1" value="80" />
+      </label>
+      <p id="replacementLineLimitHint" class="config-hint">TXT 超长内容不会丢弃，会在下一行继续替换。</p>
+      <div class="modal-actions config-actions">
+        <button id="chooseDefaultFolderBtn" class="toolbar-btn primary" type="button">选择默认文件夹</button>
+        <button id="clearDefaultFolderBtn" class="toolbar-btn danger" type="button">清除默认文件夹</button>
+        <button id="saveReplacementLineLimitBtn" class="toolbar-btn" type="button">保存替换行宽</button>
+        <button id="closeConfigBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="extensionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="extensionTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="extensionTitle">扩展</h3>
+      <p>扩展功能入口预留中。</p>
+      <div class="modal-actions config-actions">
+        <button id="closeExtensionBtn" class="toolbar-btn primary" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="relayModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="relayTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="relayTitle">Relay 服务器</h3>
+      <p class="config-hint">填写 Relay 地址（例如 <code>http://127.0.0.1:9000</code>），保存后会立即重连。</p>
+      <label class="compose-field">
+        <span>Relay 地址</span>
+        <input id="relayUrlInput" type="text" placeholder="http://127.0.0.1:9000" />
+      </label>
+      <label class="compose-field">
+        <span>用户名</span>
+        <input id="relayUsernameInput" type="text" placeholder="user_001 / 张三" />
+      </label>
+      <div class="modal-actions config-actions">
+        <button id="saveRelayBtn" class="toolbar-btn primary" type="button">保存并重连</button>
+        <button id="resetRelayBtn" class="toolbar-btn danger" type="button">恢复默认</button>
+        <button id="closeRelayBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-card config-modal-card">
+      <h3 id="helpTitle">帮助</h3>
+      <p id="helpUsernameText">用户名：-</p>
+      <p id="helpPeerIdText">ID：-</p>
+      <p id="helpEndpointText">端点：-</p>
+      <div class="modal-actions config-actions">
+        <button id="copyIdentityBtn" class="toolbar-btn primary" type="button">复制身份信息</button>
+        <button id="closeHelpBtn" class="toolbar-btn" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js?v=20260325-wps-page-v11"></script>
+</body>
+</html>
+
